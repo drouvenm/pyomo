@@ -191,7 +191,7 @@ def process_setarg(arg):
 @deprecated('The set_options decorator is deprecated; create Sets from '
             'functions explicitly by passing the function to the Set '
             'constructor using the "initialize=" keyword argument.',
-            version='TBD')
+            version='5.7')
 def set_options(**kwds):
     """
     This is a decorator for set initializer functions.  This
@@ -411,7 +411,7 @@ class TuplizeValuesInitializer(InitializerBase):
             return _val
         elif _val is Set.Skip:
             return _val
-        elif not _val:
+        elif _val is None:
             return _val
 
         if not isinstance(_val, collections_Sequence):
@@ -476,7 +476,7 @@ class _SetData(_SetDataBase):
             if isinstance(value, _SetData):
                 deprecation_warning(
                     "Testing for set subsets with 'a in b' is deprecated.  "
-                    "Use 'a.issubset(b)'.", version='TBD')
+                    "Use 'a.issubset(b)'.", version='5.7')
                 return value.issubset(self)
             else:
                 return False
@@ -499,7 +499,7 @@ class _SetData(_SetDataBase):
         return False
 
     def subsets(self, expand_all_set_operators=None):
-        return [ self ]
+        return iter((self,))
 
     def __iter__(self):
         """Iterate over the set members
@@ -803,7 +803,7 @@ class _SetData(_SetDataBase):
         return (interval.start, interval.end, interval.step)
 
     @property
-    @deprecated("The 'virtual' attribute is no longer supported", version='TBD')
+    @deprecated("The 'virtual' attribute is no longer supported", version='5.7')
     def virtual(self):
         return isinstance(self, (_AnySet, SetOperator, _InfiniteRangeSetData))
 
@@ -816,7 +816,7 @@ class _SetData(_SetDataBase):
 
     @property
     @deprecated("The 'concrete' attribute is no longer supported.  "
-                "Use isdiscrete() or isfinite()", version='TBD')
+                "Use isdiscrete() or isfinite()", version='5.7')
     def concrete(self):
         return self.isfinite()
 
@@ -829,18 +829,18 @@ class _SetData(_SetDataBase):
 
     @property
     @deprecated("The 'ordered' attribute is no longer supported.  "
-                "Use isordered()", version='TBD')
+                "Use isordered()", version='5.7')
     def ordered(self):
         return self.isordered()
 
     @property
     @deprecated("'filter' is no longer a public attribute.",
-                version='TBD')
+                version='5.7')
     def filter(self):
         return None
 
     @deprecated("check_values() is deprecated: Sets only contain valid members",
-                version='TBD')
+                version='5.7')
     def check_values(self):
         """
         Verify that the values in this set are valid.
@@ -1158,14 +1158,14 @@ class _FiniteSetMixin(object):
 
     @property
     @deprecated("The 'value' attribute is deprecated.  Use .data() to "
-                "retrieve the values in a finite set.", version='TBD')
+                "retrieve the values in a finite set.", version='5.7')
     def value(self):
         return set(self)
 
     @property
     @deprecated("The 'value_list' attribute is deprecated.  Use "
                 ".ordered_data() to retrieve the values from a finite set "
-                "in a deterministic order.", version='TBD')
+                "in a deterministic order.", version='5.7')
     def value_list(self):
         return list(self.ordered_data())
 
@@ -1285,7 +1285,7 @@ class _FiniteSetData(_FiniteSetMixin, _SetData):
 
     @property
     @deprecated("'filter' is no longer a public attribute.",
-                version='TBD')
+                version='5.7')
     def filter(self):
         return self._filter
 
@@ -1758,6 +1758,7 @@ class Set(IndexedComponent):
 
     This class provides a Pyomo component that is API-compatible with
     Python `set` objects, with additional features, including:
+
         1. Member validation and filtering.  The user can declare
            domains and provide callback functions to validate set
            members and to filter (ignore) potential members.
@@ -1770,58 +1771,69 @@ class Set(IndexedComponent):
 
     Parameters
     ----------
-        name : str, optional
-            The name of the set
-        doc : str, optional
-            A text string describing this component
-        initialize : initializer(iterable), optional
-            The initial values to store in the Set when it is
-            constructed.  Values passed to `initialize` may be
-            overridden by `data` passed to the :py:meth:`construct`
-            method.
-        dimen : initializer(int), optional
-            Specify the Set's arity (the required tuple length for all
-            members of the Set), or None if no arity is enforced
-        ordered : bool or Set.InsertionOrder or Set.SortedOrder or function
-            Specifies whether the set is ordered. Possible values are:
-                False               Unordered
-                True                Ordered by insertion order
-                Set.InsertionOrder  Ordered by insertion order [default]
-                Set.SortedOrder     Ordered by sort order
-                <function>          Ordered with this comparison function
-        within : initialiser(set), optional
-            A set that defines the valid values that can be contained
-            in this set
-        domain : initializer(set), optional
-            A set that defines the valid values that can be contained
-            in this set
-        bounds : initializer(tuple), optional
-            A tuple that specifies the bounds for valid Set values
-            (accepts 1-, 2-, or 3-tuple RangeSet arguments)
-        filter : initializer(rule), optional
-            A rule for determining membership in this set. This has the
-            functional form:
+    name : str, optional
+        The name of the set
 
-                ``f: Block, *data -> bool``
+    doc : str, optional
+        A text string describing this component
 
-            and returns True if the data belongs in the set.  Set will
-            quietly ignore any values where `filter` returns False.
-        validate : initializer(rule), optional
-            A rule for validating membership in this set. This has the
-            functional form:
+    initialize : initializer(iterable), optional
+        The initial values to store in the Set when it is
+        constructed.  Values passed to ``initialize`` may be
+        overridden by ``data`` passed to the :py:meth:`construct`
+        method.
 
-                ``f: Block, *data -> bool``
+    dimen : initializer(int), optional
+        Specify the Set's arity (the required tuple length for all
+        members of the Set), or None if no arity is enforced
 
-            and returns True if the data belongs in the set.  Set will
-            raise a ``ValueError`` for any values where `validate`
-            returns False.
+    ordered : bool or Set.InsertionOrder or Set.SortedOrder or function
+        Specifies whether the set is ordered.
+        Possible values are:
+
+          ======================  =====================================
+          ``False``               Unordered
+          ``True``                Ordered by insertion order
+          ``Set.InsertionOrder``  Ordered by insertion order [default]
+          ``Set.SortedOrder``     Ordered by sort order
+          ``<function>``          Ordered with this comparison function
+          ======================  =====================================
+
+    within : initialiser(set), optional
+        A set that defines the valid values that can be contained
+        in this set
+    domain : initializer(set), optional
+        A set that defines the valid values that can be contained
+        in this set
+    bounds : initializer(tuple), optional
+        A tuple that specifies the bounds for valid Set values
+        (accepts 1-, 2-, or 3-tuple RangeSet arguments)
+    filter : initializer(rule), optional
+        A rule for determining membership in this set. This has the
+        functional form:
+
+            ``f: Block, *data -> bool``
+
+        and returns True if the data belongs in the set.  Set will
+        quietly ignore any values where `filter` returns False.
+    validate : initializer(rule), optional
+        A rule for validating membership in this set. This has the
+        functional form:
+
+            ``f: Block, *data -> bool``
+
+        and returns True if the data belongs in the set.  Set will
+        raise a ``ValueError`` for any values where `validate`
+        returns False.
 
     Notes
     -----
-        `domain`, `within`, and `bounds` all provide restrictions on the
-        valid set values.  If more than one is specified, Set values
-        will be restricted to the intersection of `domain`, `within`,
-        and `bounds`.
+      .. note::
+
+        ``domain=``, ``within=``, and ``bounds=`` all provide
+        restrictions on the valid set values.  If more than one is
+        specified, Set values will be restricted to the intersection of
+        ``domain``, ``within``, and ``bounds``.
 
     """
 
@@ -1950,7 +1962,7 @@ class Set(IndexedComponent):
 
 
     @deprecated("check_values() is deprecated: Sets only contain valid members",
-                version='TBD')
+                version='5.7')
     def check_values(self):
         """
         Verify that the values in this set are valid.
@@ -2191,7 +2203,10 @@ class Set(IndexedComponent):
 
 
 class IndexedSet(Set):
-    pass
+    def data(self):
+        "Return a dict containing the data() of each Set in this IndexedSet"
+        return {k: v.data() for k,v in iteritems(self)}
+
 
 class FiniteSimpleSet(_FiniteSetData, Set):
     def __init__(self, **kwds):
@@ -2520,17 +2535,41 @@ class RangeSet(Component):
     unbounded). Similarly, boutique ranges (like semi-continuous
     domains) can be represented, e.g.:
 
-    ..code:
-        RangeSet(ranges=(NumericRange(0,0,0), NumericRange(1,100,0)))
+    .. doctest::
+
+       >>> from pyomo.core.base.range import NumericRange
+       >>> from pyomo.environ import RangeSet
+       >>> print(RangeSet(ranges=(NumericRange(0,0,0), NumericRange(1,100,0))))
+       ([0] | [1..100])
 
     The `RangeSet` object continues to support the notation for
     specifying discrete ranges using "[first=1], last, [step=1]" values:
 
-    ..code:
-        RangeSet(3)          # [1, 2, 3]
-        RangeSet(2,5)        # [2, 3, 4, 5]
-        RangeSet(2,5,2)      # [2, 4]
-        RangeSet(2.5,4,0.5)  # [2.5, 3, 3.5, 4]
+    .. doctest::
+
+        >>> r = RangeSet(3)
+        >>> print(r)
+        [1:3]
+        >>> print(list(r))
+        [1, 2, 3]
+
+        >>> r = RangeSet(2, 5)
+        >>> print(r)
+        [2:5]
+        >>> print(list(r))
+        [2, 3, 4, 5]
+
+        >>> r = RangeSet(2, 5, 2)
+        >>> print(r)
+        [2:4:2]
+        >>> print(list(r))
+        [2, 4]
+
+        >>> r = RangeSet(2.5, 4, 0.5)
+        >>> print(r)
+        ([2.5] | [3.0] | [3.5] | [4.0])
+        >>> print(list(r))
+        [2.5, 3.0, 3.5, 4.0]
 
     By implementing RangeSet using NumericRanges, the global Sets (like
     `Reals`, `Integers`, `PositiveReals`, etc.) are trivial
@@ -2927,7 +2966,7 @@ class SetOperator(_SetData, Set):
             deprecation_warning(
                 "Providing construction data to SetOperator objects is "
                 "deprecated.  This data is ignored and in a future version "
-                "will not be allowed", version='TBD')
+                "will not be allowed", version='5.7')
             fail = len(data) > 1 or None not in data
             if not fail:
                 _data = data[None]
@@ -3043,7 +3082,7 @@ class SetOperator(_SetData, Set):
     @property
     @deprecated("SetProduct.set_tuple is deprecated.  "
                 "Use SetProduct.subsets() to get the operator arguments.",
-                version='TBD')
+                version='5.7')
     def set_tuple(self):
         # Despite its name, in the old SetProduct, set_tuple held a list
         return list(self.subsets())
@@ -3856,7 +3895,7 @@ class _AnyWithNoneSet(_AnySet):
     # the class because we will always create a global instance for
     # backwards compatability with the Book.
     @deprecated("The AnyWithNone set is deprecated.  "
-                "Use Any, which includes None", version='TBD')
+                "Use Any, which includes None", version='5.7')
     def get(self, val, default=None):
         return super(_AnyWithNoneSet, self).get(val, default)
 
@@ -3951,7 +3990,7 @@ def DeclareGlobalSet(obj, caller_globals=None):
 
         global_name = None
 
-        def __new__(cls, **kwds):
+        def __new__(cls, *args, **kwds):
             """Hijack __new__ to mock up old RealSet el al. interface
 
             In the original Set implementation (Pyomo<=5.6.7), the
@@ -3964,6 +4003,17 @@ def DeclareGlobalSet(obj, caller_globals=None):
             """
             if cls is GlobalSet and GlobalSet.global_name \
                and issubclass(GlobalSet, RangeSet):
+                deprecation_warning(
+                    "The use of RealSet, IntegerSet, BinarySet and "
+                    "BooleanSet as Pyomo Set class generators is "
+                    "deprecated.  Please either use one of the pre-declared "
+                    "global Sets (e.g., Reals, NonNegativeReals, Integers, "
+                    "PositiveIntegers, Binary), or create a custom RangeSet.",
+                    version='TBD')
+                # Note: we will completely ignore any positional
+                # arguments.  In this situation, these could be the
+                # parent_block and any indices; e.g.,
+                #    Var(m.I, within=RealSet)
                 base_set = GlobalSets[GlobalSet.global_name]
                 bounds = kwds.pop('bounds', None)
                 range_init = SetInitializer(base_set)
@@ -3982,7 +4032,7 @@ def DeclareGlobalSet(obj, caller_globals=None):
                         cls_name is not None or bounds is not None):
                     ans._name += str(ans.bounds())
             else:
-                ans = super(GlobalSet, cls).__new__(cls, **kwds)
+                ans = super(GlobalSet, cls).__new__(cls, *args, **kwds)
             if kwds:
                 raise RuntimeError("Unexpected keyword arguments: %s" % (kwds,))
             return ans
@@ -4108,14 +4158,14 @@ BooleanSet = Boolean.__class__
 
 class RealInterval(RealSet):
     @deprecated("RealInterval has been deprecated.  Please use "
-                "RangeSet(lower, upper, 0)", version='TBD')
+                "RangeSet(lower, upper, 0)", version='5.7')
     def __new__(cls, **kwds):
         kwds.setdefault('class_name', 'RealInterval')
         return super(RealInterval, cls).__new__(RealSet, **kwds)
 
 class IntegerInterval(IntegerSet):
     @deprecated("IntegerInterval has been deprecated.  Please use "
-                "RangeSet(lower, upper, 1)", version='TBD')
+                "RangeSet(lower, upper, 1)", version='5.7')
     def __new__(cls, **kwds):
         kwds.setdefault('class_name', 'IntegerInterval')
         return super(IntegerInterval, cls).__new__(IntegerSet, **kwds)
